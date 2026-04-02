@@ -9,7 +9,7 @@
 
 import { readFileSync, writeFileSync, existsSync, copyFileSync, readdirSync, statSync, realpathSync } from "fs";
 import { join } from "path";
-import { homedir, platform } from "os";
+import { homedir, platform, cpus } from "os";
 import { execSync } from "child_process";
 import { parseArgs } from "util";
 
@@ -300,6 +300,9 @@ const { values: args } = parseArgs({
     "preview-hats": { type: "string" },
     "preview-shiny": { type: "string" },
     "roll-multi": { type: "string" },
+    "parallel": { type: "string" },
+    start: { type: "string" },
+    end: { type: "string" },
     salt: { type: "string" },
   },
   strict: false,
@@ -442,28 +445,121 @@ if (args["roll-multi"]) {
   }
 
   const STAT_ZH = { DEBUGGING: "除錯力", PATIENCE: "耐心值", CHAOS: "混亂值", WISDOM: "智慧值", SNARK: "毒舌值" };
+  const isWorker = !!args.start;
+  const rangeStart = parseInt(args.start) || 0;
+  const rangeEnd = parseInt(args.end) || 500_000_000;
 
-  console.log(`\n  Searching for ${count} matches: ${Object.entries(target).map(([k, v]) => `${k}=${v}`).join(" ")}\n`);
+  // Auto-parallel: use all available cores (leave 1 for system)
+  const totalCores = cpus().length;
+  const workerCount = Math.max(2, totalCores - 1);
+  if (!isWorker && workerCount > 1) {
+    const CHUNK = Math.ceil(rangeEnd / workerCount);
+    const scriptPath = new URL(import.meta.url).pathname;
+    const targetArgs = [];
+    if (args.species) targetArgs.push("--species", args.species);
+    if (args.rarity) targetArgs.push("--rarity", args.rarity);
+    if (args.eye) targetArgs.push("--eye", args.eye);
+    if (args.hat) targetArgs.push("--hat", args.hat);
+    if (args.shiny) targetArgs.push("--shiny");
+
+    console.log(`\n  🚀 ${workerCount} 核心平行搜尋中... 目標：${count} 組 ${Object.entries(target).map(([k, v]) => `${k}=${v}`).join(" ")}\n`);
+    const startTime = Date.now();
+
+    const workers = [];
+    for (let w = 0; w < workerCount; w++) {
+      const s = w * CHUNK;
+      const e = Math.min(s + CHUNK, rangeEnd);
+      const proc = Bun.spawn(["bun", scriptPath, "--roll-multi", String(count), "--start", String(s), "--end", String(e), ...targetArgs], {
+        stdout: "pipe", stderr: "ignore",
+      });
+      workers.push(proc);
+    }
+
+    const outputs = await Promise.all(workers.map(async (proc) => {
+      const text = await new Response(proc.stdout).text();
+      await proc.exited;
+      return text;
+    }));
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    // Parse salt lines from all workers, collect results, re-number top N
+    const saltRegex = /salt: (\S+)/g;
+    const allResults = [];
+    for (const output of outputs) {
+      let m;
+      const lines = output.split("\n");
+      let currentResult = null;
+      for (const line of lines) {
+        if ((m = line.match(/salt: (\S+)/))) {
+          if (currentResult) { currentResult.salt = m[1]; allResults.push(currentResult); }
+          currentResult = null;
+        }
+        if (line.includes("#")) currentResult = { display: [] };
+        if (currentResult) currentResult.display.push(line);
+      }
+    }
+
+    // Re-roll to get actual data for display
+    const collected = [];
+    for (const r of allResults) {
+      const result = rollFrom(r.salt, userId);
+      if (matches(result, target)) collected.push({ salt: r.salt, result });
+    }
+    collected.sort((a, b) => {
+      const aMax = Math.max(...Object.values(a.result.stats));
+      const bMax = Math.max(...Object.values(b.result.stats));
+      return bMax - aMax;
+    });
+    const top = collected.slice(0, count);
+
+    console.log(`  ⚡ ${workerCount} 核心完成，${elapsed}s，找到 ${collected.length} 組，顯示前 ${top.length} 組\n`);
+
+    for (let i = 0; i < top.length; i++) {
+      const r = top[i].result;
+      const c = RARITY_COLORS[r.rarity] ?? RARITY_COLORS.common;
+      const statsLine = STAT_NAMES.map((s) => {
+        const v = r.stats[s];
+        const filled = Math.min(10, Math.max(0, Math.round(v / 10)));
+        const bar = c + "█".repeat(filled) + RESET + "░".repeat(10 - filled);
+        return `${STAT_ZH[s]} ${bar} ${String(v).padStart(3)}`;
+      }).join("  ");
+      const peak = STAT_NAMES.reduce((a, b) => r.stats[a] >= r.stats[b] ? a : b);
+      const peakLabel = r.stats[peak] >= 90 ? " 🔥" : "";
+      console.log(`  ${c}#${i + 1}${RESET}  ${c}${r.species}/${r.rarity}${r.shiny ? "/✨" : ""}${RESET}  eye:${r.eye} hat:${r.hat}${peakLabel}`);
+      console.log(`      ${statsLine}`);
+      console.log(`      salt: ${top[i].salt}`);
+      console.log();
+    }
+    process.exit(0);
+  }
+
+  // Worker mode or single-core fallback
+  if (!isWorker) {
+    console.log(`\n  Searching for ${count} matches: ${Object.entries(target).map(([k, v]) => `${k}=${v}`).join(" ")}\n`);
+  }
 
   const results = [];
   const startTime = Date.now();
   let checked = 0;
 
-  for (let i = 0; i < 500_000_000 && results.length < count; i++) {
+  for (let i = rangeStart; i < rangeEnd && results.length < count; i++) {
     const salt = String(i).padStart(SALT_LEN, "x");
     checked++;
     const r = rollFrom(salt, userId);
     if (matches(r, target)) results.push({ salt, result: r });
 
-    if (checked % 500_000 === 0) {
+    if (!isWorker && checked % 500_000 === 0) {
       process.stderr.write(`\r  Searching... ${(checked / 1_000_000).toFixed(1)}M checked, ${results.length}/${count} found`);
       await new Promise((r) => setTimeout(r, 0));
     }
   }
-  process.stderr.write("\r" + " ".repeat(70) + "\r");
+  if (!isWorker) process.stderr.write("\r" + " ".repeat(70) + "\r");
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`  ✓ Found ${results.length} matches in ${checked.toLocaleString()} attempts (${elapsed}s)\n`);
+  if (!isWorker) {
+    console.log(`  ✓ Found ${results.length} matches in ${checked.toLocaleString()} attempts (${elapsed}s)\n`);
+  }
 
   for (let i = 0; i < results.length; i++) {
     const r = results[i].result;
