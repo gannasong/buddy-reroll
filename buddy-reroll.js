@@ -304,6 +304,7 @@ const { values: args } = parseArgs({
     start: { type: "string" },
     end: { type: "string" },
     salt: { type: "string" },
+    force: { type: "boolean", default: false },
   },
   strict: false,
 });
@@ -633,8 +634,8 @@ if (args.salt) {
     process.exit(0);
   }
 
-  if (isClaudeRunning()) {
-    console.warn("  ⚠ Claude Code is running. Quit all instances before patching.");
+  if (isClaudeRunning() && !args.force) {
+    console.warn("  ⚠ Claude Code is running. Use --force to patch anyway, or quit Claude Code first.");
     process.exit(1);
   }
 
@@ -705,8 +706,8 @@ if (args.dry) {
   process.exit(0);
 }
 
-if (isClaudeRunning()) {
-  console.warn("  ⚠ Claude Code is running. Quit all instances before patching.");
+if (isClaudeRunning() && !args.force) {
+  console.warn("  ⚠ Claude Code is running. Use --force to patch anyway, or quit Claude Code first.");
   process.exit(1);
 }
 

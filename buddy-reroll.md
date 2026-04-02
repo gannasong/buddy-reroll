@@ -1,20 +1,21 @@
-🎰 互動式 Buddy 重刷工具 — 選擇你理想的 Claude Code /buddy 夥伴物種、稀有度、外觀，暴力搜尋匹配的 salt 並 patch 到二進位檔。
+🎰 Interactive Buddy Reroller / 互動式 Buddy 重刷工具 — Choose your ideal Claude Code /buddy companion species, rarity, appearance, brute-force the matching salt and patch the binary. / 選擇你理想的 Claude Code /buddy 夥伴物種、稀有度、外觀，暴力搜尋匹配的 salt 並 patch 到二進位檔。
 
-## Prerequisites
+## Round 1 — Show current buddy + all options in ONE message
 
-Before starting, run this command to check the current buddy:
+First, run this command to check the current buddy:
 ```
 bun ~/.claude/scripts/buddy-reroll.js --current
 ```
-Show the result to the user as "🐾 你目前的 Buddy", then add a short roast (毒舌吐槽) about the current buddy based on its species, rarity, and stats. Be playful and savage — mock its weakest stat, judge its rarity, comment on its species. Examples:
-- A common cactus with low patience: "🌵 一棵沒耐心的白板仙人掌... 連沙漠都嫌棄你。"
-- A common dragon with SNARK 63 but PATIENCE 1: "🐉 一隻只會嘴砲但完全沒耐心的白板龍，嗆人嗆到一半就不耐煩走了。難怪你想重刷。"
-- A legendary capybara: "🏆 已經是傳說水豚了你還想重刷？貪心。"
-Keep it to 1-2 sentences, 繁體中文, end with something that motivates them to reroll.
 
-## Step 1 — 🧬 選擇物種
+Then output EVERYTHING below in a single message:
 
-Print this EXACT species matrix with numbering (do NOT modify the ASCII art):
+### 🐾 Current Buddy
+
+Show the --current result, then add a short roast (毒舌吐槽) about the current buddy. Be playful and savage — mock its weakest stat, judge its rarity. Keep it to 1-2 sentences, end with motivation to reroll.
+
+### 🧬 Species / 物種 (1-18)
+
+Print this EXACT species matrix (do NOT modify the ASCII art):
 
 ```
   1.🦆 鴨子 duck       2.🪿 鵝 goose        3.🫧 史萊姆 blob     4.🐱 貓 cat          5.🐉 龍 dragon       6.🐙 章魚 octopus
@@ -36,118 +37,109 @@ Print this EXACT species matrix with numbering (do NOT modify the ASCII art):
     `------´              |    |              `------´            (")__(")              |____|              `------´
 ```
 
-Ask: `🧬 選一隻 (1-18):`
+### ⭐ Rarity / 稀有度 (1-5)
 
-Wait for user input. Map the number to the species English name.
-
-## Step 2 — ⭐ 選擇稀有度
-
-Print:
 ```
-  1. ★         ⬜ 普通 common       60%   基礎屬性值 5
-  2. ★★        🟩 稀有 uncommon     25%   基礎屬性值 15
-  3. ★★★       🟦 珍稀 rare         10%   基礎屬性值 25
-  4. ★★★★      🟪 史詩 epic          4%   基礎屬性值 35
-  5. ★★★★★     🟨 傳說 legendary     1%   基礎屬性值 50
+  1. ★       ⬜ 普通 common      60%  基礎值 5
+  2. ★★      🟩 稀有 uncommon    25%  基礎值 15
+  3. ★★★     🟦 珍稀 rare        10%  基礎值 25
+  4. ★★★★    🟪 史詩 epic         4%  基礎值 35
+  5. ★★★★★   🟨 傳說 legendary    1%  基礎值 50
 ```
 
-Ask: `⭐ 選稀有度 (1-5):`
+### 👁️ Eyes / 眼睛 (1-6)
 
-Wait for user input. Map the number to the rarity English name.
-
-## Step 3 — 👁️ 選擇眼睛
-
-Run this command to show the user's chosen species with all 6 eye variations side-by-side:
 ```
-bun ~/.claude/scripts/buddy-reroll.js --preview-eyes <species>
+  1. ·  圓點    2. ✦  星星    3. ×  叉叉    4. ◉  靶心    5. @  漩渦    6. °  空洞
 ```
 
-The command output already contains the preview. Do NOT reprint it. Just ask: `👁️ 選眼睛 (1-6):`
+### 🎩 Hat / 帽子 (0-7)
 
-Wait for user input. Map: 1=· 2=✦ 3=× 4=◉ 5=@ 6=°
-
-## Step 4 — 🎩 選擇帽子
-
-If user chose rarity "common", skip this step and inform: `⬜ 普通稀有度沒有帽子，自動設為 none。`
-
-Otherwise, run this command to show the species with the chosen eye + all hat variations:
 ```
-bun ~/.claude/scripts/buddy-reroll.js --preview-hats <species> --eye "<eye>"
+  0. 無 none    1. \^^^/ 皇冠 crown    2. [___] 高帽 tophat    3. -+- 螺旋槳 propeller
+  4. (   ) 光環 halo    5. /^\ 巫師帽 wizard    6. (___) 毛線帽 beanie    7. ,> 小鴨帽 tinyduck
+```
+Note: common rarity forces hat=none.
+
+### ✨ Shiny / 閃光
+
+```
+  1. 普通    2. ✨ 閃光 (原始機率 1%，在 Claude Code 裡金色發光)
 ```
 
-The command output already contains the preview. Do NOT reprint it. Just ask: `🎩 選帽子 (2-8)，或 1 不戴:`
+### 📝 One-shot input
 
-Wait for user input. Map: 1=none 2=crown 3=tophat 4=propeller 5=halo 6=wizard 7=beanie 8=tinyduck
+Ask the user to answer all at once:
 
-## Step 5 — ✨ 閃光
+`🎰 一次選完！格式：物種 稀有度 眼睛 帽子 閃光（例如：13 5 4 1 2 = 水豚/傳說/靶心/皇冠/閃光）：`
 
-Shiny 是獨立於稀有度的特殊效果，原始機率只有 1%。在 Claude Code 裡會有金色發光的渲染效果。
+## Round 2 — Search + results
 
-Ask: `✨ 要閃光嗎？(1=普通 / 2=✨閃光):`
+Parse the user's input (5 numbers). Map each:
+- Species: 1-18 → SPECIES array (duck, goose, blob, cat, dragon, octopus, owl, penguin, turtle, snail, ghost, axolotl, capybara, cactus, robot, rabbit, mushroom, chonk)
+- Rarity: 1-5 → common, uncommon, rare, epic, legendary
+- Eye: 1-6 → ·, ✦, ×, ◉, @, °
+- Hat: 0-7 → none, crown, tophat, propeller, halo, wizard, beanie, tinyduck
+- Shiny: 1=no, 2=yes
 
-Wait for user input. Map: 1=no shiny, 2=shiny.
+If input is unclear or partial, ask for clarification. Accept flexible formats (e.g. "capybara legendary 靶心 皇冠 閃光").
 
-## Step 6 — 📋 預覽
-
-Summarize the user's choices in a card format, e.g.:
+Summarize the choice:
 ```
   🎴 === 你的選擇 ===
-  🧬 物種: 水豚 capybara
-  ⭐ 稀有度: 傳說 legendary ★★★★★
-  👁️ 眼睛: ✦ 星星
-  🎩 帽子: 皇冠 crown
-  ✨ 閃光: Yes
+  🧬 物種: ...
+  ⭐ 稀有度: ...
+  👁️ 眼睛: ...
+  🎩 帽子: ...
+  ✨ 閃光: ...
 ```
 
-Then run roll-multi to find 5 candidates with different stat distributions:
+Then run parallel search:
 ```
 bun ~/.claude/scripts/buddy-reroll.js --roll-multi 5 --species <species> --rarity <rarity> --eye "<eye>" --hat <hat> --shiny
 ```
-(Omit `--shiny` if user chose no. Omit `--hat` if none.)
+(Omit `--shiny` if no shiny. Omit `--hat` if none.)
 
-The output shows 5 candidates each with different stats. Present them to the user with Chinese stat names:
+Note: this may take 10-30 seconds for rare combos (legendary + shiny). Warn the user.
+
+Present the 5 candidates with Chinese stat names and AI commentary:
 - DEBUGGING = 除錯力
 - PATIENCE = 耐心值
 - CHAOS = 混亂值
 - WISDOM = 智慧值
 - SNARK = 毒舌值
 
-Note: this search may take 10-30 seconds for rare combos (legendary + shiny). Let the user know.
+Add a brief roast/recommendation for each candidate (e.g. "#3 混亂滿分的瘋狂水豚，適合寫 regex", "#4 全面型選手，沒有短板").
 
-Ask: `🎲 選一組你最滿意的屬性 (1-5)，或 r 重新搜尋 5 組：`
+Ask: `🎲 選一組 (1-5)，或 r 重新搜尋：`
 
-Wait for user input. Remember the selected salt for Step 7.
+## Round 3 — Confirm + Patch
 
-Ask: `🎯 確認要刷嗎？這會修改 Claude Code 二進位檔（會自動備份）。(y/n):`
+When user picks a candidate:
 
-## Step 7 — 🔧 執行
-
-If user confirms:
-
-1. IMPORTANT: Warn the user — `⚠️ 請先關閉所有 Claude Code 視窗，再輸入 y 繼續。`
+1. Warn: `⚠️ 請先關閉所有其他 Claude Code 視窗，再輸入 y 繼續。`
 2. Wait for user confirmation.
-3. Run the patch using the salt from the user's chosen candidate:
+3. Run patch (--force because we're running inside Claude Code):
 ```
-bun ~/.claude/scripts/buddy-reroll.js --salt <selected_salt>
+bun ~/.claude/scripts/buddy-reroll.js --salt <selected_salt> --force
 ```
-4. Show the result.
-5. Tell user: `🎉 完成！重新啟動 Claude Code 後輸入 /buddy 就能看到你的新夥伴！`
+4. Show result.
+5. `🎉 完成！重新啟動 Claude Code 後輸入 /buddy 就能看到你的新夥伴！`
 
-If user declines, say: `👌 沒問題，隨時可以再 /buddy-reroll。`
+If user declines: `👌 沒問題，隨時可以再 /buddy-reroll。`
 
 ## 🔄 Restore
 
-If at any point the user says they want to restore/還原, run:
+If the user says restore/還原:
 ```
 bun ~/.claude/scripts/buddy-reroll.js --restore
 ```
 
 ## Rules
 
-- Always communicate in 繁體中文
+- Detect the user's language from their first message and respond in that language throughout the session. If unclear, default to 繁體中文.
 - Use emoji liberally throughout responses to keep the mood fun and playful 🎮
-- Wait for user input at each step — do NOT skip ahead or auto-fill
-- Show ALL visual options before asking
+- Round 1 MUST be a single message — show ALL options at once, do NOT split into multiple steps
 - The eye character must be passed with quotes in the command since some are special chars
-- If user types a species name instead of a number, accept it
-- If user wants to go back to a previous step, allow it
+- Accept flexible input formats: numbers, names, Chinese names, or mixed
+- If user wants to change a previous choice, allow it without restarting
