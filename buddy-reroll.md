@@ -99,13 +99,24 @@ Summarize the user's choices in a card format, e.g.:
   ✨ 閃光: Yes
 ```
 
-Then run dry mode to preview:
+Then run roll-multi to find 5 candidates with different stat distributions:
 ```
-bun ~/.claude/scripts/buddy-reroll.js --dry --species <species> --rarity <rarity> --eye "<eye>" --hat <hat> --shiny
+bun ~/.claude/scripts/buddy-reroll.js --roll-multi 5 --species <species> --rarity <rarity> --eye "<eye>" --hat <hat> --shiny
 ```
 (Omit `--shiny` if user chose no. Omit `--hat` if none.)
 
-Show the dry run result to the user.
+The output shows 5 candidates each with different stats. Present them to the user with Chinese stat names:
+- DEBUGGING = 除錯力
+- PATIENCE = 耐心值
+- CHAOS = 混亂值
+- WISDOM = 智慧值
+- SNARK = 毒舌值
+
+Note: this search may take 10-30 seconds for rare combos (legendary + shiny). Let the user know.
+
+Ask: `🎲 選一組你最滿意的屬性 (1-5)，或 r 重新搜尋 5 組：`
+
+Wait for user input. Remember the selected salt for Step 7.
 
 Ask: `🎯 確認要刷嗎？這會修改 Claude Code 二進位檔（會自動備份）。(y/n):`
 
@@ -115,9 +126,9 @@ If user confirms:
 
 1. IMPORTANT: Warn the user — `⚠️ 請先關閉所有 Claude Code 視窗，再輸入 y 繼續。`
 2. Wait for user confirmation.
-3. Run the actual reroll (without --dry):
+3. Run the patch using the salt from the user's chosen candidate:
 ```
-bun ~/.claude/scripts/buddy-reroll.js --species <species> --rarity <rarity> --eye "<eye>" --hat <hat> --shiny
+bun ~/.claude/scripts/buddy-reroll.js --salt <selected_salt>
 ```
 4. Show the result.
 5. Tell user: `🎉 完成！重新啟動 Claude Code 後輸入 /buddy 就能看到你的新夥伴！`

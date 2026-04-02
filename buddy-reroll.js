@@ -299,6 +299,8 @@ const { values: args } = parseArgs({
     "preview-eyes": { type: "string" },
     "preview-hats": { type: "string" },
     "preview-shiny": { type: "string" },
+    "roll-multi": { type: "string" },
+    salt: { type: "string" },
   },
   strict: false,
 });
@@ -419,6 +421,71 @@ if (args["preview-shiny"]) {
   process.exit(0);
 }
 
+// ── Roll multi: find N matching salts for user to pick stats ────────────
+
+if (args["roll-multi"]) {
+  const count = parseInt(args["roll-multi"]) || 5;
+  const configPath = findConfigPath();
+  if (!configPath) { console.error("  ✗ Config not found."); process.exit(1); }
+  const userId = getUserId(configPath);
+
+  const target = {};
+  if (args.species) target.species = args.species;
+  if (args.rarity) target.rarity = args.rarity;
+  if (args.eye) target.eye = args.eye;
+  if (args.hat) target.hat = args.hat;
+  if (args.shiny !== undefined) target.shiny = args.shiny;
+
+  if (Object.keys(target).length === 0) {
+    console.error("  ✗ Specify at least one target. Use --help.");
+    process.exit(1);
+  }
+
+  const STAT_ZH = { DEBUGGING: "除錯力", PATIENCE: "耐心值", CHAOS: "混亂值", WISDOM: "智慧值", SNARK: "毒舌值" };
+
+  console.log(`\n  Searching for ${count} matches: ${Object.entries(target).map(([k, v]) => `${k}=${v}`).join(" ")}\n`);
+
+  const results = [];
+  const startTime = Date.now();
+  let checked = 0;
+
+  for (let i = 0; i < 500_000_000 && results.length < count; i++) {
+    const salt = String(i).padStart(SALT_LEN, "x");
+    checked++;
+    const r = rollFrom(salt, userId);
+    if (matches(r, target)) results.push({ salt, result: r });
+
+    if (checked % 500_000 === 0) {
+      process.stderr.write(`\r  Searching... ${(checked / 1_000_000).toFixed(1)}M checked, ${results.length}/${count} found`);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+  process.stderr.write("\r" + " ".repeat(70) + "\r");
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(`  ✓ Found ${results.length} matches in ${checked.toLocaleString()} attempts (${elapsed}s)\n`);
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i].result;
+    const c = RARITY_COLORS[r.rarity] ?? RARITY_COLORS.common;
+    const statsLine = STAT_NAMES.map((s) => {
+      const v = r.stats[s];
+      const filled = Math.min(10, Math.max(0, Math.round(v / 10)));
+      const bar = c + "█".repeat(filled) + RESET + "░".repeat(10 - filled);
+      return `${STAT_ZH[s]} ${bar} ${String(v).padStart(3)}`;
+    }).join("  ");
+
+    const peak = STAT_NAMES.reduce((a, b) => r.stats[a] >= r.stats[b] ? a : b);
+    const peakLabel = r.stats[peak] >= 90 ? " 🔥" : "";
+
+    console.log(`  ${c}#${i + 1}${RESET}  ${c}${r.species}/${r.rarity}${r.shiny ? "/✨" : ""}${RESET}  eye:${r.eye} hat:${r.hat}${peakLabel}`);
+    console.log(`      ${statsLine}`);
+    console.log(`      salt: ${results[i].salt}`);
+    console.log();
+  }
+  process.exit(0);
+}
+
 const binaryPath = findBinaryPath();
 if (!binaryPath) { console.error("✗ Claude Code binary not found."); process.exit(1); }
 
@@ -449,6 +516,44 @@ if (args.current) {
   console.log(`\n  Current companion (salt: ${currentSalt}):\n`);
   console.log(formatCard(result));
   console.log();
+  process.exit(0);
+}
+
+// ── Direct salt patch mode ───────────────────────────────────────────────
+
+if (args.salt) {
+  const newSalt = args.salt;
+  if (newSalt.length !== SALT_LEN) {
+    console.error(`  ✗ Salt must be ${SALT_LEN} chars, got ${newSalt.length}.`);
+    process.exit(1);
+  }
+  const result = rollFrom(newSalt, userId);
+  console.log(`\n  Target salt: ${newSalt}\n`);
+  console.log(formatCard(result));
+  console.log();
+
+  if (args.dry) {
+    console.log(`  [DRY RUN] — no changes made.\n`);
+    process.exit(0);
+  }
+
+  if (isClaudeRunning()) {
+    console.warn("  ⚠ Claude Code is running. Quit all instances before patching.");
+    process.exit(1);
+  }
+
+  const backupPath = binaryPath + ".backup";
+  if (!existsSync(backupPath)) {
+    copyFileSync(binaryPath, backupPath);
+    console.log(`  Backup:  ${backupPath}`);
+  }
+
+  const patchCount = patchBinary(binaryPath, currentSalt, newSalt);
+  console.log(`  Patched: ${patchCount} occurrence(s)`);
+  if (resignBinary(binaryPath)) console.log("  Signed:  ad-hoc codesign ✓");
+  clearCompanion(configPath);
+  console.log("  Config:  companion data cleared");
+  console.log("\n  ✓ Done! Restart Claude Code and run /buddy.\n");
   process.exit(0);
 }
 
