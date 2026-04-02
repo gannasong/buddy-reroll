@@ -4,27 +4,23 @@
 
 Interactive Claude Code `/buddy` companion reroller — choose your species, rarity, eyes, hat, and shiny, then brute-force the salt and patch.
 
-## Preview
+## Screenshots
 
-```
-  1.🦆 duck            2.🪿 goose           3.🫧 blob            4.🐱 cat             5.🐉 dragon          6.🐙 octopus
-      __                    (·>              .----.              /\_/\              /^\  /^\             .----.
-    <(· )___                ||              ( ·  · )            ( ·   ·)           <  ·  ·  >           ( ·  · )
-     (  ._>               _(__)_            (      )            (  ω  )            (   ~~   )           (______)
-      `--´                 ^^^^              `----´             (")_(")             `-vvvv-´            /\/\/\/\
+### View your current buddy & stats
 
-  7.🦉 owl             8.🐧 penguin         9.🐢 turtle         10.🐌 snail          11.👻 ghost          12.🦎 axolotl
-     /\  /\                .---.              _,--._             ·    .--.            .----.           }~(______)~{
-    ((·)(·))               (·>·)             ( ·  · )             \  ( @ )           / ·  · \          }~(· .. ·)~{
-    (  ><  )              /(   )\           /[______]\             \_`--´            |      |            ( .--. )
-     `----´                `---´             ``    ``            ~~~~~~~             ~`~``~`~            (_/  \_)
+![Current Buddy](assets/01-current-buddy.png)
 
- 13.🦫 capybara        14.🌵 cactus         15.🤖 robot         16.🐰 rabbit         17.🍄 mushroom       18.🐷 chonk
-    n______n            n  ____  n             .[||].              (\__/)            .-o-OO-o-.            /\    /\
-   ( ·    · )           | |·  ·| |            [ ·  · ]            ( ·  · )          (__________)          ( ·    · )
-   (   oo   )           |_|    |_|            [ ==== ]           =(  ..  )=            |·  ·|             (   ..   )
-    `------´              |    |              `------´            (")__(")              |____|              `------´
-```
+### Pick from 18 species, 5 rarities, 6 eyes, 8 hats
+
+![Selection Menu](assets/02-selection-menu.png)
+
+### Parallel brute-force search with AI commentary
+
+![Roll Multi Results](assets/03-roll-multi-results.png)
+
+### Buddy card preview
+
+![Buddy Card](assets/04-buddy-card.png)
 
 ## Combinations
 
